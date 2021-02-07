@@ -21,10 +21,10 @@
 title: Running with data
 email: leonardkunz@hotmail.de
 description: >- # this means to ignore newlines until "baseurl:"
-  This blog has no clear purpose. I will mainly post stuff I judge to be interesting.
+  This blog has no clear purpose. I will mainly post stuff I judge to be interesting. Who am I kidding. I want to
+showcase my awesome statistics and optimization skills to get an awesome job in the field.
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
-twitter_username: jekyllrb
 github_username:  LeonardMK
 
 # Build settings

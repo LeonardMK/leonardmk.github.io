@@ -1,0 +1,10 @@
+---
+title: 'Quantile Regression: The Problem'
+author: "Leonard Kunz"
+date: "2021-02-07"
+categories: Statistics Econometrics
+output: html_document
+params:
+  output_dir: "..blog/_posts"
+---
+Hey folks. Its me ya boy!
