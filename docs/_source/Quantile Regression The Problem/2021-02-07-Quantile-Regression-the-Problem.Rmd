@@ -1,0 +1,123 @@
+---
+title: 'Quantile Regression: The Problem'
+author: "Leonard Kunz"
+date: "2021-02-07"
+excerpt: Explaining how quantiles are an optimization problem.
+layout: post
+categories: 
+  -Statistics 
+  -Econometrics
+  - Quantile Regression
+output: html_document
+---
+## Quantile Regression
+
+Have you ever thought to yourself, the mean as an estimator is incredibly prone
+to outliers and also gives only a snippet of the underlying distribution? ...No?
+Me neither! However, Koenker did in 1978 and this brings us right to the wonderful
+world of quantile regression. 
+
+Remember quantiles? Probably some stuff like, it is immune to outliers, 
+and maybe even, that for distribtution $F$ it holds that realizations are smaller 
+to $q(\tau)$ with probability $\tau$ and bigger with probability $1-\tau$. 
+So in a sense the quantile is the mitochondrion of statistics. Everyone knows 
+its basic properties. But here I want to show you that the use of quantiles
+goes far beyond.
+
+In this first part of the series I will show you, how quantile estimation can be
+reformulated from a sorting problem to an optimzation problem. This will bring us
+right to conditional quantile estimation. Since I like doing stuff the complicated
+way, we will implement everything in R as we go along. Note that I will also drop
+a good amount of mathematics because I feel that most blog posts about statistics
+are actually just manuals. However, we don't only want to know how to assemble the
+chair but how the parts were built
+
+### The Quantile
+
+As said before the quantile divides the range of a probability distribution into
+two parts. For the $\tau$th quantile, where $\tau \in [0, 1]$, $\tau$ is the
+probability that a value of the random variable is smaller or equal to the
+$\tau$th quantile denoted as $q(\tau)$ from here on. More formally, For the 
+distribution $F_X: \mathcal{R} \to [0, 1]$ of random variable $X$ the $\tau$th 
+quantile satisfies:
+\[
+F_X(x)\equiv Pr(X \le x) = \tau
+\]
+which can be expressed as the quantile function $Q(\tau): [0, 1] \to \mathcal{R}$ 
+defined as
+\[
+Q(\tau) \equiv \inf{x\in \mathcal{R}: \tau \le F_X(x)}
+\]
+To show you the intuition behind these two consider the plot below which plots
+the cdf and the quantile function of standard normal. See that in the case of a
+strictly increasing cdf the quantile function is just the inverse of the cdf
+$Q(\tau) = F_X^{-1}(\tau)$.
+
+```{r, message=FALSE, warning=FALSE}
+# Load some packages first
+library(ggplot2)
+library(latex2exp)
+library(quantreg)
+library(tidyverse)
+```
+
+```{r}
+set.seed(2093)
+x <- seq(-2, 2, by = 0.1)
+cdf_x <- pnorm(x)
+quantile_fct <- qnorm(cdf_x)
+
+# Bind data together to use facts
+data_plot_1 <- rbind.data.frame(
+  cbind(x = x, y = cdf_x), 
+  cbind(x = cdf_x, y = quantile_fct)
+  )
+
+# Create an identification column
+data_plot_1$Type <- rep(c("CDF", "Quantile"), each = length(x))
+
+# Plot of the cdf
+data_plot_1 %>% ggplot(aes(x = x, y = y)) + 
+  geom_line() +
+  facet_grid(. ~ Type, scales = "free") + 
+  labs(title = "CDF and Quantile function of a standard normal") + 
+  theme_bw()
+
+```
+
+### Quantile Estimation
+
+So far so good. Estimation of quantiles is usually taught as a sorting problem.
+For a sample $x$ of size $n$ we order the observations and then choose $\hat{q}(\tau)$
+such that $\hat{F}_X(\hat{q}(\tau)) = \tau$. What is usually not taught is, that
+the same problem can be solved by minimizing the function
+\[
+\hat{q}(\tau) = \arg \min_{q \in \mathcal{R}} \sum_{i = 1}^n \rho_{\tau}(x_i - q)
+\]
+where $\rho_{\tau} (x) \equiv x (\tau - \mathcal{I}_{x < 0})$. The loss function
+$\rho_{\tau}$ is an asymmetric value function. I define the function below and
+plot it.
+```{r}
+# Define quantile loss function for later use.
+loss_rho <- function(x, tau) x * (tau - (x < 0))
+
+# Example for 25% quantile
+x <- seq(-1, 1, by = 0.05)
+y <- loss_rho(x, tau = 0.25)
+data_loss <- cbind.data.frame(x, y)
+
+data_loss %>% 
+  ggplot(mapping = aes(x, y)) +
+  geom_line() +
+  geom_vline(xintercept = 0, col = "red") + 
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  labs(x = "x", y = TeX("$\\rho_{\\tau}$"), title = TeX("For $\\tau = 0.25$"))
+```
+From the above plot we can see some of the loss function's properties.
+\begin{\itemize}
+  \item $\rho_{\tau}$ has a kink at $0$.
+  \item $\rho_{\tau}$ is piecewise linear with gradient $(\tau - 1)$ and $\tau$
+\end{itemize}
+Therefore, the loss increase is slower for $x > 0$. At last we still need to solve
+this equation. To do so we reformulate the problem into a linear program.
